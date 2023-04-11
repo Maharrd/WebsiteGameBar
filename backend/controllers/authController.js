@@ -31,3 +31,41 @@ exports.loginUser = catchAsyncErrors(async (req, res, next) => {
 
     sendToken(user, 200, res)
 })
+
+exports.registerUser = catchAsyncErrors(async (req, res, next) => {
+
+    const { name, email, password, avatar } = req.body;
+
+    if (!name) {
+        return next(new ErrorHandler('Tên không được để trống', 401))
+    }
+    if (!email) {
+        return next(new ErrorHandler('Email không được để trống', 401))
+    }
+    if (!password) {
+        return next(new ErrorHandler('Mật khẩu không được để trống', 401))
+    }
+    if (!avatar) {
+        return next(new ErrorHandler('Hình đại diện không được để trống', 401))
+    }
+
+    const result = await cloudinary.v2.uploader.upload(req.body.avatar, {
+        folder: 'avatars',
+        width: 150,
+        crop: "scale"
+    })
+
+
+    const user = await User.create({
+        name,
+        email,
+        password,
+        avatar: {
+            public_id: result.public_id,
+            url: result.secure_url
+        }
+    })
+
+    sendToken(user, 200, res)
+
+})
