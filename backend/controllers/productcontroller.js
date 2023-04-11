@@ -118,3 +118,49 @@ exports.deleteReview = catchAsyncErrors(async (req, res, next) => {
         success: true
     })
 })
+// Get single product details   =>   /api/v1/product/:id
+exports.getSingleProduct = catchAsyncErrors(async (req, res, next) => {
+
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+        return next(new ErrorHandler('Không tìm thấy sản phẩm', 404));
+    }
+
+
+    res.status(200).json({
+        success: true,
+        product
+    })
+
+})
+// Get all products   =>   /api/v1/products?keyword=apple
+exports.getProducts = catchAsyncErrors(async (req, res, next) => {
+
+    const resPerPage = 12;
+    const productsCount = await Product.countDocuments();
+
+    const apiFeatures = new APIFeatures(Product.find(), req.query)
+        .search()
+        .filter()
+
+    let products = await apiFeatures.query;
+    let filteredProductsCount = products.length;
+
+    apiFeatures.pagination(resPerPage)
+    products = await apiFeatures.query;
+
+
+    setTimeout(function () {
+        res.status(200).json({
+            success: true,
+            productsCount,
+            resPerPage,
+            filteredProductsCount,
+            products
+        })
+    }, 2000)
+
+
+})
+
