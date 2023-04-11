@@ -1,64 +1,40 @@
-// var express = require("express");
-// var router = express.Router();
-// var Product = require("./../model/product");
-// router.get("/", function(req,res){
-//     res.json({"message": "this is product"});
-// });
-// router.get("/get-product-list", function(req,res){
-//     var productList = new Array();
-//     for(var i = 0; i< 20;i++){
-//         var product = new Product();
-//         product.id = (i+1);
-//         product.name = "name " + (i+1);
-//         productList.push(product);
-//     }
-//     res.json(productList);
-// });
-// module.exports = router;
+const Product = require('../models/product')
 
-var express = require("express");
-const { ObjectId } = require("mongodb");
-var router = express.Router();
-var Product = require("./../model/product");
-var ProductService = require("./../services/productService");
+const ErrorHandler = require('../utils/errorHandler');
+const catchAsyncErrors = require('../middlewares/catchAsyncErrors');
+const APIFeatures = require('../utils/apiFeatures')
+const cloudinary = require('cloudinary')
 
-router.get("/", function(req,res){
-    res.json({"message": "this is product"});
-});
+// Create new product   =>   /api/v1/admin/product/new
+exports.newProduct = catchAsyncErrors(async (req, res, next) => {
 
-router.get("/product-list", async function(req,res){
-    var productService = new ProductService();
-    var product =  await productService.getProductList();
-    res.json(product);
-});
-router.get("/get-product", async function(req,res){
-    var productService = new ProductService();
-    var product =  await productService.getProduct(req.query.id);
-    res.json(product);
-});
+    let images = []
+    if (typeof req.body.images === 'string') {
+        images.push(req.body.images)
+    } else {
+        images = req.body.images
+    }
 
-router.post("/insert-product", async function(req,res){
-    var productService = new ProductService();
-    var pro = new Product();
-    pro.Name = req.body.Name;
-    pro.Price = req.body.Price;
-    var result =  await productService.insertProduct(pro);
-    res.json({status: true, message:""});
-});
+    let imagesLinks = [];
 
-router.post("/update-product", async function(req,res){
-    var productService = new ProductService();
-    var pro = new Product();
-    pro._id = new ObjectId(req.body.Id);
-    pro.Name = req.body.Name;
-    pro.Price = req.body.Price;
-    await  productService.updateProduct(pro);
-    res.json({status: true, message:""});
-});
+    for (let i = 0; i < images.length; i++) {
+        const result = await cloudinary.v2.uploader.upload(images[i], {
+            folder: 'products'
+        });
 
-router.delete("/delete-product", async function(req,res){
-    var productService = new ProductService();
-    await  productService.deleteProduct(req.query.id);
-    res.json({status: true, message:""});
-});
-module.exports = router;
+        imagesLinks.push({
+            public_id: result.public_id,
+            url: result.secure_url
+        })
+    }
+
+    req.body.images = imagesLinks
+    req.body.user = req.user.id;
+
+    const product = await Product.create(req.body);
+
+    res.status(201).json({
+        success: true,
+        product
+    })
+})
