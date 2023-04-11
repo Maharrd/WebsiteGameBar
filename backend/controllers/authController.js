@@ -91,3 +91,12 @@ exports.forgotPassword = catchAsyncErrors(async (req, res, next) => {
         return next(new ErrorHandler('Đã có lỗi xảy ra khi gửi email đặt lại mật khẩu. Vui lòng thử lại sau.', 500));
     }
 });
+
+ // Update user password
+    user.password = req.body.password;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+
+    sendToken(user, 200, res);
+});
