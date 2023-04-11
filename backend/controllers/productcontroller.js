@@ -118,3 +118,19 @@ exports.deleteReview = catchAsyncErrors(async (req, res, next) => {
         success: true
     })
 })
+// Get single product details   =>   /api/v1/product/:id
+exports.getSingleProduct = catchAsyncErrors(async (req, res, next) => {
+
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+        return next(new ErrorHandler('Không tìm thấy sản phẩm', 404));
+    }
+
+
+    res.status(200).json({
+        success: true,
+        product
+    })
+
+})
