@@ -92,7 +92,21 @@ exports.forgotPassword = catchAsyncErrors(async (req, res, next) => {
     }
 });
 
- // Update user password
+exports.resetPassword = catchAsyncErrors(async (req, res, next) => {
+    // Get user based on the token
+    const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+    // console.log(req.params.token);
+    // console.log(hashedToken);
+    const user = await User.findOne({
+        resetPasswordToken: hashedToken,
+        resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!user) {
+        return next(new ErrorHandler('Token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn', 400));
+    }
+
+    // Update user password
     user.password = req.body.password;
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
@@ -100,3 +114,43 @@ exports.forgotPassword = catchAsyncErrors(async (req, res, next) => {
 
     sendToken(user, 200, res);
 });
+
+// Register a user   => /api/v1/register
+exports.registerUser = catchAsyncErrors(async (req, res, next) => {
+
+    const { name, email, password, avatar } = req.body;
+
+    if (!name) {
+        return next(new ErrorHandler('Tên không được để trống', 401))
+    }
+    if (!email) {
+        return next(new ErrorHandler('Email không được để trống', 401))
+    }
+    if (!password) {
+        return next(new ErrorHandler('Mật khẩu không được để trống', 401))
+    }
+    if (!avatar) {
+        return next(new ErrorHandler('Hình đại diện không được để trống', 401))
+    }
+
+    const result = await cloudinary.v2.uploader.upload(req.body.avatar, {
+        folder: 'avatars',
+        width: 150,
+        crop: "scale"
+    })
+
+
+    const user = await User.create({
+        name,
+        email,
+        password,
+        avatar: {
+            public_id: result.public_id,
+            url: result.secure_url
+        }
+    })
+
+    sendToken(user, 200, res)
+
+})
+
